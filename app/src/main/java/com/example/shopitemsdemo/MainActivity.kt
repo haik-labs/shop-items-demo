@@ -26,9 +26,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.RemoveShoppingCart
 import androidx.compose.material.icons.outlined.ShoppingBasket
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -37,6 +39,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -88,6 +91,7 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var itemBeingEdited by remember { mutableStateOf<ShoppingItem?>(null) }
 
     fun showUndo(message: String, undo: () -> Unit) {
         scope.launch {
@@ -139,6 +143,7 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel = viewModel()) {
                         ShoppingItemRow(
                             item = item,
                             onToggle = { viewModel.toggleItem(item.id) },
+                            onEdit = { itemBeingEdited = item },
                             onDelete = {
                                 viewModel.deleteItem(item.id)?.let { deleted ->
                                     showUndo("Removed ${deleted.name}") { viewModel.restoreItem(deleted) }
@@ -149,6 +154,19 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel = viewModel()) {
                 }
             }
         }
+    }
+
+    itemBeingEdited?.let { item ->
+        EditItemDialog(
+            item = item,
+            onDismiss = { itemBeingEdited = null },
+            onSave = { name ->
+                if (viewModel.editItem(item.id, name)) {
+                    itemBeingEdited = null
+                    scope.launch { snackbarHostState.showSnackbar("Updated ${normalizeItemName(name)}") }
+                }
+            },
+        )
     }
 }
 
@@ -216,7 +234,12 @@ private fun FilterRow(state: ShoppingUiState, onFilter: (ItemFilter) -> Unit) {
 }
 
 @Composable
-private fun ShoppingItemRow(item: ShoppingItem, onToggle: () -> Unit, onDelete: () -> Unit) {
+private fun ShoppingItemRow(
+    item: ShoppingItem,
+    onToggle: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
     Card(
         onClick = onToggle,
         modifier = Modifier.fillMaxWidth().animateContentSize().semantics { role = Role.Checkbox },
@@ -236,11 +259,43 @@ private fun ShoppingItemRow(item: ShoppingItem, onToggle: () -> Unit, onDelete: 
                 style = MaterialTheme.typography.bodyLarge,
                 textDecoration = if (item.purchased) TextDecoration.LineThrough else null,
             )
+            IconButton(onClick = onEdit, modifier = Modifier.semantics { contentDescription = "Edit ${item.name}" }) {
+                Icon(Icons.Outlined.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             IconButton(onClick = onDelete, modifier = Modifier.semantics { contentDescription = "Delete ${item.name}" }) {
                 Icon(Icons.Outlined.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
+}
+
+@Composable
+private fun EditItemDialog(item: ShoppingItem, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var name by rememberSaveable(item.id) { mutableStateOf(item.name) }
+    fun save() {
+        if (name.isNotBlank()) onSave(name)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit item") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { if (it.length <= 80) name = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Item name") },
+                supportingText = { Text("${name.length}/80") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { save() }),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = ::save, enabled = name.isNotBlank()) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

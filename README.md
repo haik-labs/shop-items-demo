@@ -5,7 +5,7 @@ A small, polished Android shopping-list app built with Kotlin and Jetpack Compos
 ## Features
 
 - Add shopping items from a focused, keyboard-friendly input
-- Mark items as purchased and filter by **All**, **To buy**, or **Done**
+- Edit item names, mark items as purchased, and filter by **All**, **To buy**, or **Done**
 - Delete individual items, clear purchased items, and undo accidental deletions
 - Persist the list locally between launches with `SharedPreferences`
 - Accessible Material 3 UI with dark-mode and dynamic-color support

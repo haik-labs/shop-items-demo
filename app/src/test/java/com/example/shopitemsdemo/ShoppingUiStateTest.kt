@@ -23,4 +23,9 @@ class ShoppingUiStateTest {
         assertEquals(listOf("Bread"), ShoppingUiState(items, ItemFilter.DONE).visibleItems.map { it.name })
         assertEquals(items, ShoppingUiState(items, ItemFilter.ALL).visibleItems)
     }
+
+    @Test
+    fun itemNamesAreTrimmedAndWhitespaceIsCollapsed() {
+        assertEquals("Green apples", normalizeItemName("  Green   apples  "))
+    }
 }

@@ -27,7 +27,7 @@ class ShoppingViewModel(application: Application) : AndroidViewModel(application
     val uiState: StateFlow<ShoppingUiState> = _uiState.asStateFlow()
 
     fun addItem(rawName: String): Boolean {
-        val name = rawName.trim().replace(Regex("\\s+"), " ")
+        val name = normalizeItemName(rawName)
         if (name.isBlank()) return false
         changeItems { current ->
             current + ShoppingItem(
@@ -40,6 +40,15 @@ class ShoppingViewModel(application: Application) : AndroidViewModel(application
 
     fun toggleItem(id: Long) = changeItems { items ->
         items.map { if (it.id == id) it.copy(purchased = !it.purchased) else it }
+    }
+
+    fun editItem(id: Long, rawName: String): Boolean {
+        val name = normalizeItemName(rawName)
+        if (name.isBlank() || _uiState.value.items.none { it.id == id }) return false
+        changeItems { items ->
+            items.map { if (it.id == id) it.copy(name = name) else it }
+        }
+        return true
     }
 
     fun deleteItem(id: Long): ShoppingItem? {
@@ -69,3 +78,6 @@ class ShoppingViewModel(application: Application) : AndroidViewModel(application
         repository.save(_uiState.value.items)
     }
 }
+
+internal fun normalizeItemName(rawName: String): String =
+    rawName.trim().replace(Regex("\\s+"), " ")
